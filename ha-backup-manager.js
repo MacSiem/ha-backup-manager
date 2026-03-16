@@ -124,7 +124,7 @@ class HaBackupManager extends HTMLElement {
     }
 
     this._healthData.lastBackupDate = new Date(this._backups[0].date);
-    this._healthData.totalSize = this._backups.reduce((sum, b) => sum + (b.size || 0), 0) || 0;
+    this._healthData.totalSize = this._backups.reduce((sum, b) => sum + (b.size || 0), 0);
     this._healthData.backupCount = this._backups.length;
 
     const now = new Date();
@@ -182,7 +182,7 @@ class HaBackupManager extends HTMLElement {
   }
 
   _selectBackup(backup) {
-    this._selectedBackup = this._selectedBackup?.backup_id === backup.backup_id ? null : backup;
+    this._selectedBackup = this._selectedBackup?.slug === backup.slug ? null : backup;
     this._updateUI();
   }
 
@@ -190,11 +190,11 @@ class HaBackupManager extends HTMLElement {
     return `
       <div class="tab-content">
         <div class="backup-controls">
-          <button class="create-btn full-backup" data-action="createBackup" data-full="true">
-            <span class="icon">?</span> Create Full Backup
+          <button class="create-btn full-backup" @click="${() => this._createBackup(true)}">
+            <span class="icon">⊕</span> Create Full Backup
           </button>
-          <button class="create-btn partial-backup" data-action="createBackup" data-full="false">
-            <span class="icon">?</span> Create Partial Backup
+          <button class="create-btn partial-backup" @click="${() => this._createBackup(false)}">
+            <span class="icon">⊕</span> Create Partial Backup
           </button>
         </div>
 
@@ -203,33 +203,33 @@ class HaBackupManager extends HTMLElement {
         <div class="backups-list">
           ${this._backups.length === 0
             ? '<div class="empty-state">No backups available</div>'
-            : this._backups.map((backup, i) => `
-              <div class="backup-item ${this._selectedBackup?.backup_id === backup.backup_id ? 'selected' : ''}"
-                   data-action="selectBackup" data-idx="${i}">
+            : this._backups.map((backup) => `
+              <div class="backup-item ${this._selectedBackup?.slug === backup.slug ? 'selected' : ''}"
+                   @click="${() => this._selectBackup(backup)}">
                 <div class="backup-header">
                   <div class="backup-info">
                     <h3>${backup.name || 'Backup'}</h3>
-                    <span class="backup-type ${backup.homeassistant_included ? "partial" : "unknown"}">${backup.homeassistant_included ? "partial" : "unknown"}</span>
-                    ${backup.extra_metadata?.protected ? '<span class="badge protected">?? Protected</span>' : ''}
+                    <span class="backup-type ${backup.type}">${backup.type}</span>
+                    ${backup.is_protected ? '<span class="badge protected">🔒 Protected</span>' : ''}
                   </div>
                   <div class="backup-meta">
                     <span class="date">${this._formatDate(backup.date)}</span>
-                    <span class="size">${backup.size ? this._formatBytes(backup.size) : "N/A"}</span>
+                    <span class="size">${this._formatBytes(backup.size || 0)}</span>
                   </div>
                 </div>
-                ${this._selectedBackup?.backup_id === backup.backup_id ? `
+                ${this._selectedBackup?.slug === backup.slug ? `
                   <div class="backup-details">
                     <h4>Backup Contents:</h4>
                     <div class="contents-grid">
-                      ${backup.homeassistant_included ? '<span class="content-item">?? Home Assistant Config</span>' : ''}
-                      ${backup.database_included ? '<span class="content-item">?? Database</span>' : ''}
-                      ${backup.addons?.length > 0 ? `<span class="content-item">?? ${backup.addons.length} Add-ons</span>` : ''}
-                      ${backup.folders?.length > 0 ? `<span class="content-item">?? ${backup.folders.length} Folders</span>` : ''}
+                      ${backup.includes?.homeassistant ? '<span class="content-item">📋 Home Assistant Config</span>' : ''}
+                      ${backup.includes?.database ? '<span class="content-item">💾 Database</span>' : ''}
+                      ${backup.includes?.addons?.length > 0 ? `<span class="content-item">🧩 ${backup.includes.addons.length} Add-ons</span>` : ''}
+                      ${backup.includes?.folders?.length > 0 ? `<span class="content-item">📁 ${backup.includes.folders.length} Folders</span>` : ''}
                     </div>
-                    ${backup.addons?.length > 0 ? `
+                    ${backup.includes?.addons?.length > 0 ? `
                       <div class="addon-list">
                         <strong>Add-ons:</strong>
-                        ${backup.addons.map(a => `<span>${typeof a === 'object' ? a.name || a.slug : a}</span>`).join('')}
+                        ${backup.includes.addons.map(a => `<span>${a}</span>`).join('')}
                       </div>
                     ` : ''}
                   </div>
@@ -254,7 +254,7 @@ class HaBackupManager extends HTMLElement {
             <div class="health-value ${daysStatus}">
               ${!timeSince ? 'Never' : `${timeSince.days}d ${timeSince.hours % 24}h ago`}
             </div>
-            <p class="health-label">Status: ${daysStatus === 'good' ? '? Healthy' : daysStatus === 'warning' ? '? Warning' : '? No backups'}</p>
+            <p class="health-label">Status: ${daysStatus === 'good' ? '✓ Healthy' : daysStatus === 'warning' ? '⚠ Warning' : '✗ No backups'}</p>
           </div>
 
           <div class="health-card">
@@ -325,6 +325,350 @@ class HaBackupManager extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
+        :host {
+          --primary-color: var(--primary-color, #2196F3);
+          --error-color: var(--error-color, #F44336);
+          --warning-color: var(--warning-color, #FF9800);
+          --success-color: var(--success-color, #4CAF50);
+          --background-color: var(--card-background-color, #fff);
+          --text-color: var(--primary-text-color, #212121);
+          --secondary-text: var(--secondary-text-color, #727272);
+          --border-color: var(--divider-color, #e0e0e0);
+          --dark-mode: ${this._hass?.themes?.darkMode ? 'true' : 'false'};
+        }
+
+        .card-container {
+          background: var(--background-color);
+          border-radius: 8px;
+          padding: 16px;
+          color: var(--text-color);
+        }
+
+        .card-title {
+          font-size: 20px;
+          font-weight: 500;
+          margin: 0 0 16px 0;
+          padding: 0;
+        }
+
+        .tabs {
+          display: flex;
+          gap: 8px;
+          border-bottom: 1px solid var(--border-color);
+          margin: 0 -16px 16px -16px;
+          padding: 0 16px;
+        }
+
+        .tab-btn {
+          background: none;
+          border: none;
+          padding: 12px 16px;
+          cursor: pointer;
+          color: var(--secondary-text);
+          font-size: 14px;
+          font-weight: 500;
+          border-bottom: 3px solid transparent;
+          transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+          color: var(--primary-color);
+          border-bottom-color: var(--primary-color);
+        }
+
+        .tab-btn:hover {
+          color: var(--text-color);
+        }
+
+        .tab-content {
+          animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .backup-controls {
+          display: flex;
+          gap: 12px;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+        }
+
+        .create-btn {
+          padding: 12px 16px;
+          border: none;
+          border-radius: 6px;
+          font-weight: 500;
+          cursor: pointer;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          transition: all 0.2s ease;
+        }
+
+        .full-backup {
+          background: var(--success-color);
+          color: white;
+        }
+
+        .full-backup:hover {
+          opacity: 0.9;
+          box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        .partial-backup {
+          background: var(--primary-color);
+          color: white;
+        }
+
+        .partial-backup:hover {
+          opacity: 0.9;
+          box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+        }
+
+        .create-btn .icon {
+          font-size: 16px;
+        }
+
+        .error-banner {
+          background: var(--error-color);
+          color: white;
+          padding: 12px 16px;
+          border-radius: 6px;
+          margin-bottom: 16px;
+          font-size: 14px;
+        }
+
+        .backups-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .backup-item {
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          padding: 16px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .backup-item:hover {
+          border-color: var(--primary-color);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .backup-item.selected {
+          border-color: var(--primary-color);
+          background: rgba(33, 150, 243, 0.05);
+        }
+
+        .backup-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 16px;
+        }
+
+        .backup-info h3 {
+          margin: 0 0 8px 0;
+          font-size: 16px;
+        }
+
+        .backup-type {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .backup-type.full {
+          background: rgba(76, 175, 80, 0.2);
+          color: var(--success-color);
+        }
+
+        .backup-type.partial {
+          background: rgba(255, 152, 0, 0.2);
+          color: var(--warning-color);
+        }
+
+        .badge {
+          display: inline-block;
+          padding: 2px 8px;
+          margin-left: 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          background: rgba(33, 150, 243, 0.2);
+          color: var(--primary-color);
+        }
+
+        .backup-meta {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 4px;
+          min-width: 150px;
+        }
+
+        .date, .size {
+          font-size: 13px;
+          color: var(--secondary-text);
+        }
+
+        .backup-details {
+          margin-top: 16px;
+          padding-top: 16px;
+          border-top: 1px solid var(--border-color);
+        }
+
+        .backup-details h4 {
+          margin: 0 0 12px 0;
+          font-size: 14px;
+          color: var(--secondary-text);
+        }
+
+        .contents-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+
+        .content-item {
+          padding: 8px 12px;
+          background: rgba(33, 150, 243, 0.1);
+          border-radius: 4px;
+          font-size: 13px;
+        }
+
+        .addon-list {
+          margin-top: 8px;
+          padding: 8px;
+          background: rgba(0, 0, 0, 0.02);
+          border-radius: 4px;
+          font-size: 12px;
+        }
+
+        .addon-list span {
+          display: inline-block;
+          margin-right: 8px;
+          margin-top: 4px;
+          padding: 2px 6px;
+          background: var(--border-color);
+          border-radius: 3px;
+        }
+
+        .empty-state {
+          text-align: center;
+          padding: 40px 20px;
+          color: var(--secondary-text);
+          font-size: 14px;
+        }
+
+        .health-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .health-card {
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          padding: 16px;
+        }
+
+        .health-card h3 {
+          margin: 0 0 12px 0;
+          font-size: 14px;
+          color: var(--secondary-text);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .health-value {
+          font-size: 32px;
+          font-weight: 600;
+          margin: 8px 0;
+        }
+
+        .health-value.good {
+          color: var(--success-color);
+        }
+
+        .health-value.warning {
+          color: var(--warning-color);
+        }
+
+        .health-value.error {
+          color: var(--error-color);
+        }
+
+        .health-label {
+          margin: 8px 0 0 0;
+          font-size: 13px;
+          color: var(--secondary-text);
+        }
+
+        .schedule-section, .settings-section {
+          margin-bottom: 24px;
+          padding: 16px;
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+        }
+
+        .schedule-section h3, .settings-section h3 {
+          margin: 0 0 12px 0;
+          font-size: 16px;
+        }
+
+        .schedule-info {
+          background: rgba(33, 150, 243, 0.05);
+          padding: 12px;
+          border-radius: 4px;
+          margin-top: 12px;
+          font-size: 13px;
+        }
+
+        .setting-item {
+          margin-bottom: 12px;
+        }
+
+        .setting-item label {
+          display: block;
+          font-weight: 500;
+          margin-bottom: 4px;
+        }
+
+        .setting-item p {
+          margin: 0;
+          font-size: 14px;
+          color: var(--secondary-text);
+        }
+
+        @media (max-width: 600px) {
+          .backup-header {
+            flex-direction: column;
+          }
+
+          .backup-meta {
+            align-items: flex-start;
+          }
+
+          .health-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .contents-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      
+/* === Modern Bento Light Mode === */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -621,15 +965,15 @@ canvas, .canvas-container canvas { width: 100%; height: 200px; border: 1px solid
 
         <div class="tabs">
           <button class="tab-btn ${this._activeTab === 'backups' ? 'active' : ''}"
-                  data-action="switchTab" data-tab="backups">
+                  @click="${() => this._switchTab('backups')}">
             Backups
           </button>
           <button class="tab-btn ${this._activeTab === 'health' ? 'active' : ''}"
-                  data-action="switchTab" data-tab="health">
+                  @click="${() => this._switchTab('health')}">
             Health
           </button>
           <button class="tab-btn ${this._activeTab === 'settings' ? 'active' : ''}"
-                  data-action="switchTab" data-tab="settings">
+                  @click="${() => this._switchTab('settings')}">
             Settings
           </button>
         </div>
@@ -661,7 +1005,7 @@ canvas, .canvas-container canvas { width: 100%; height: 200px; border: 1px solid
     const maxValue = Math.max(...this._healthData.weeklyData, 5);
 
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = getComputedStyle(this).getPropertyValue('--text-color') || 'var(--primary-text-color, #e1e1e1)';
+    ctx.fillStyle = getComputedStyle(this).getPropertyValue('--text-color') || '#212121';
     ctx.font = '12px sans-serif';
 
     const barWidth = (width - padding * 2) / 4 - 10;
@@ -672,27 +1016,26 @@ canvas, .canvas-container canvas { width: 100%; height: 200px; border: 1px solid
       const barHeight = (value / maxValue) * chartHeight;
       const y = height - padding - barHeight;
 
-      ctx.fillStyle = 'var(--primary-color, #03a9f4)';
+      ctx.fillStyle = '#2196F3';
       ctx.fillRect(x, y, barWidth, barHeight);
 
-      ctx.fillStyle = getComputedStyle(this).getPropertyValue('--secondary-text-color') || 'var(--secondary-text-color, #9e9e9e)';
+      ctx.fillStyle = getComputedStyle(this).getPropertyValue('--secondary-text-color') || '#727272';
       ctx.textAlign = 'center';
       ctx.fillText(value, x + barWidth / 2, height - 10);
     });
   }
 
   _attachEventListeners() {
-    this.shadowRoot.querySelectorAll('[data-action="switchTab"]').forEach(btn => {
-      btn.addEventListener('click', () => this._switchTab(btn.dataset.tab));
-    });
-    this.shadowRoot.querySelectorAll('[data-action="createBackup"]').forEach(btn => {
-      btn.addEventListener('click', () => this._createBackup(btn.dataset.full === 'true'));
-    });
-    this.shadowRoot.querySelectorAll('[data-action="selectBackup"]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = parseInt(btn.dataset.idx);
-        if (this._backups[idx]) this._selectBackup(this._backups[idx]);
-      });
+    const buttons = this.shadowRoot?.querySelectorAll('[\\@click]');
+    buttons?.forEach(btn => {
+      const clickStr = btn.getAttribute('@click');
+      if (clickStr) {
+        try {
+          eval(`btn.onclick = ${clickStr}`);
+        } catch (e) {
+          console.error('Event binding error:', e);
+        }
+      }
     });
   }
 }
