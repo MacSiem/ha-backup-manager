@@ -1,3 +1,34 @@
-# HA Backup Manager\n\nAdvanced backup management for Home Assistant. Schedule automated backups, manage retention policies, and monitor backup health with one-click restore.\n\n## Installation\n\n### HACS (recommended)\n\n1. Open HACS in Home Assistant\n2. Go to **Frontend** section\n3. Click **â®** (three dots) > **Custom repositories**\n4. Add `https://github.com/MacSiem/ha-backup-manager` as **Dashboard** (or **Plugin**)\n5. Install **HA Backup Manager**\n6. Restart Home Assistant\n\n### Manual\n\nCopy the contents to `/config/www/community/ha-backup-manager/`\n\n## Design\n\nUses **Modern Bento Light Mode** design system:\n- Background: `#F8FAFC`\n- Primary: `#3B82F6`\n- Text: `#1E293B`\n- Border: `#E2E8F0`\n- Font: Inter, 16px border-radius, smooth animations\n\n## License\n\nMIT\n
+# HA Backup Manager
 
-![Backup Manager Screenshot](screenshot.png)
+![HA Backup Manager Screenshot](screenshot.png)
+
+Advanced backup management for Home Assistant. Schedule automated backups, manage retention policies, and monitor backup health.
+
+## Installation
+
+### HACS (recommended)
+
+1. Open HACS in Home Assistant
+2. Go to **Frontend** section
+3. Click the three dots menu > **Custom repositories**
+4. Add `https://github.com/MacSiem/ha-backup-manager` as **Dashboard**
+5. Install **HA Backup Manager**
+6. Restart Home Assistant
+
+### Manual
+
+Copy the contents to `/config/www/community/ha-backup-manager/`
+
+## Design
+
+Uses **Modern Bento Light Mode** design system:
+
+- Background: `#F8FAFC`
+- Primary: `#3B82F6`
+- Text: `#1E293B`
+- Border: `#E2E8F0`
+- Font: Inter, 16px border-radius, smooth animations
+
+## License
+
+MIT
