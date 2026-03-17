@@ -22,6 +22,7 @@ class HaBackupManager extends HTMLElement {
     };
     this._loading = false;
     this._error = null;
+    this._isDemoData = false;
   }
 
   static getConfigElement() {
@@ -81,11 +82,18 @@ class HaBackupManager extends HTMLElement {
         this._backups = result.backups.sort((a, b) =>
           new Date(b.date || 0) - new Date(a.date || 0)
         );
+        this._isDemoData = false;
+        this._error = null;
         this._calculateHealthData();
       }
     } catch (e) {
-      console.warn('Backup WS call failed, using demo data:', e);
-      this._backups = this._getDemoBackups();
+      console.warn('Backup Manager: API call failed:', e.message);
+      this._error = 'Nie uda\u0142o si\u0119 pobra\u0107 backup\u00F3w: ' + (e.message || 'Unknown error');
+      // Only use demo data if we have nothing at all
+      if (this._backups.length === 0) {
+        this._backups = this._getDemoBackups();
+        this._isDemoData = true;
+      }
       this._calculateHealthData();
     }
 
@@ -1325,4 +1333,4 @@ canvas, .canvas-container canvas { width: 100%; height: 200px; border: 1px solid
 
 }
 
-customElements.define('ha-backup-manager', HaBackupManager);
+if (!customElements.get('ha-backup-manager')) { customElements.define('ha-backup-manager', HaBackupManager); };
