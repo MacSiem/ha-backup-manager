@@ -23,6 +23,7 @@ class HaBackupManager extends HTMLElement {
     this._loading = false;
     this._error = null;
     this._isDemoData = false;
+    this._charts = {};
   }
 
   static getConfigElement() {
@@ -34,7 +35,17 @@ class HaBackupManager extends HTMLElement {
       title: 'Backup Manager',
       warn_after_days: 3,
       max_backups: 10,
-    };
+    }
+  async _loadChartJS() {
+    if (window.Chart) return;
+    
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+      script.onload = () => resolve(window.Chart);
+      document.head.appendChild(script);
+    });
+  };
   }
 
   setConfig(config) {
@@ -83,6 +94,7 @@ class HaBackupManager extends HTMLElement {
           new Date(b.date || 0) - new Date(a.date || 0)
         );
         this._isDemoData = false;
+    this._charts = {};
         this._error = null;
         this._calculateHealthData();
       }
@@ -1232,8 +1244,10 @@ canvas, .canvas-container canvas { width: 100%; height: 200px; border: 1px solid
     this._attachEventListeners();
 
     if (this._activeTab === 'health') {
-      setTimeout(() => this._drawFrequencyChart(), 100);
-    }
+        this._loadChartJS().then(() => {
+          setTimeout(() => this._drawFrequencyChart(), 100);
+        });
+      }
   }
 
   _switchTab(tab) {
@@ -1245,30 +1259,52 @@ canvas, .canvas-container canvas { width: 100%; height: 200px; border: 1px solid
     const canvas = this.shadowRoot?.getElementById('frequency-chart');
     if (!canvas) return;
 
+    // Destroy existing chart if it exists
+    if (this._charts['frequency']) {
+      this._charts['frequency'].destroy();
+    }
+
     const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-    const padding = 30;
+    const labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
     const maxValue = Math.max(...this._healthData.weeklyData, 5);
 
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = getComputedStyle(this).getPropertyValue('--text-color') || '#212121';
-    ctx.font = '12px sans-serif';
-
-    const barWidth = (width - padding * 2) / 4 - 10;
-    const chartHeight = height - padding * 2;
-
-    this._healthData.weeklyData.forEach((value, index) => {
-      const x = padding + index * (barWidth + 10);
-      const barHeight = (value / maxValue) * chartHeight;
-      const y = height - padding - barHeight;
-
-      ctx.fillStyle = '#2196F3';
-      ctx.fillRect(x, y, barWidth, barHeight);
-
-      ctx.fillStyle = getComputedStyle(this).getPropertyValue('--secondary-text-color') || '#727272';
-      ctx.textAlign = 'center';
-      ctx.fillText(value, x + barWidth / 2, height - 10);
+    this._charts['frequency'] = new window.Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Backups',
+          data: this._healthData.weeklyData,
+          backgroundColor: '#3B82F6',
+          borderColor: '#3B82F6',
+          borderRadius: 4,
+          borderSkipped: false,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'x',
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: maxValue,
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)',
+            },
+          },
+          x: {
+            grid: {
+              display: false,
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            display: false,
+          },
+        },
+      },
     });
   }
 
