@@ -732,9 +732,26 @@ canvas {
           gap: 16px;
         }
 
+        .backup-info {
+          flex: 1;
+          min-width: 0;
+        }
+
         .backup-info h3 {
           margin: 0 0 8px 0;
           font-size: 16px;
+        }
+
+        .badge.protected {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 3px 10px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 600;
+          background: rgba(76, 175, 80, 0.15);
+          color: #4caf50;
         }
 
         .backup-type {
