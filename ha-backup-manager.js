@@ -46,7 +46,6 @@
       script.onload = () => resolve(window.Chart);
       document.head.appendChild(script);
     });
-  };
   }
 
   setConfig(config) {
