@@ -1,4 +1,4 @@
-class HaBackupManager extends HTMLElement {
+﻿class HaBackupManager extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -36,6 +36,7 @@ class HaBackupManager extends HTMLElement {
       warn_after_days: 3,
       max_backups: 10,
     }
+  }
   async _loadChartJS() {
     if (window.Chart) return;
     
