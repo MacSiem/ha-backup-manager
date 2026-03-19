@@ -1,4 +1,4 @@
-﻿class HaBackupManager extends HTMLElement {
+class HaBackupManager extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -259,12 +259,12 @@
                 <div class="backup-header">
                   <div class="backup-info">
                     <h3>${backup.name || 'Backup'}</h3>
-                    <span class="backup-type ${backup.type}">${backup.type}</span>
-                    ${backup.is_protected ? '<span class="badge protected">🔒 Protected</span>' : ''}
+                    ${backup.type ? `<span class="backup-type ${backup.type}">${backup.type}</span>` : `<span class="backup-type full">full</span>`}
+                    ${(backup.is_protected || backup.protected) ? '<span class="badge protected">🔒 Protected</span>' : ''}
                   </div>
                   <div class="backup-meta">
                     <span class="date">${this._formatDate(backup.date)}</span>
-                    <span class="size">${this._formatBytes(backup.size || 0)}</span>
+                    <span class="size">${this._formatBytes((backup.size_in_bytes || backup.compressed_size || (backup.size ? (backup.size < 50000 ? Math.round(backup.size * 1024 * 1024) : backup.size) : 0)))}</span>
                   </div>
                 </div>
                 ${this._selectedBackup?.slug === backup.slug ? `
@@ -273,13 +273,13 @@
                     <div class="contents-grid">
                       ${backup.includes?.homeassistant ? '<span class="content-item">📋 Home Assistant Config</span>' : ''}
                       ${backup.includes?.database ? '<span class="content-item">💾 Database</span>' : ''}
-                      ${backup.includes?.addons?.length > 0 ? `<span class="content-item">🧩 ${backup.includes.addons.length} Add-ons</span>` : ''}
-                      ${backup.includes?.folders?.length > 0 ? `<span class="content-item">📁 ${backup.includes.folders.length} Folders</span>` : ''}
+                      ${((backup.includes?.addons?.length || backup.addons?.length || 0) > 0) ? `<span class="content-item">🧩 ${backup.includes?.addons?.length || backup.addons?.length || 0} Add-ons</span>` : ""}
+                      ${((backup.includes?.folders?.length || backup.folders?.length || 0) > 0) ? `<span class="content-item">📁 ${backup.includes?.folders?.length || backup.folders?.length || 0} Folders</span>` : ""}
                     </div>
-                    ${backup.includes?.addons?.length > 0 ? `
+                    ${((backup.includes?.addons || backup.addons || []).length > 0) ? `
                       <div class="addon-list">
                         <strong>Add-ons:</strong>
-                        ${backup.includes.addons.map(a => `<span>${a}</span>`).join('')}
+                        ${(backup.includes?.addons || backup.addons || []).map(a => `<span>${typeof a === "string" ? a : (a.slug || a.name || a.id || JSON.stringify(a))}</span>`).join("")}
                       </div>
                     ` : ''}
                   </div>
