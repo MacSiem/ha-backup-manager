@@ -238,7 +238,7 @@
 
   _renderBackupsTab() {
     return `
-      <div class="tab-content">
+      <div class="tab-content active">
         <div class="backup-controls">
           <button class="create-btn full-backup" @click="${() => this._createBackup(true)}">
             <span class="icon">⊕</span> Create Full Backup
@@ -297,7 +297,7 @@
     const daysStatus = !timeSince ? 'error' : timeSince.days > warnDays ? 'warning' : 'good';
 
     return `
-      <div class="tab-content">
+      <div class="tab-content active">
         <div class="health-grid">
           <div class="health-card">
             <h3>Last Backup</h3>
@@ -339,7 +339,7 @@
 
   _renderSettingsTab() {
     return `
-      <div class="tab-content">
+      <div class="tab-content active">
         <div class="settings-section">
           <h3>Backup Configuration</h3>
           <div class="setting-item">
