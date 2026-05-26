@@ -1,4 +1,16 @@
-# 💾 Backup Manager
+# 💾 Backup Manager — DEPRECATED
+
+> ## ⚠️ This repo is deprecated and will be archived
+>
+> **Why:** Home Assistant ships a full backups manager natively under
+> **Settings → System → Backups** (create, restore, schedule, retention) since
+> the 2024.x release line. Maintaining a 1.8 kLOC HACS duplicate no longer makes sense.
+>
+> **HACS status:** [PR #6259](https://github.com/hacs/default/pull/6259) was closed by HACS reviewers for the same reason — duplicates native HA functionality.
+>
+> **What to use instead:** open HA → **Settings → System → Backups** (or `/config/backups`).
+>
+> Existing installs will continue to work as-is, but no further updates will be published.
 
 ![Preview](banner.png)
 
