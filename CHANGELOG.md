@@ -1,5 +1,15 @@
 # Changelog — Backup Manager
 
+## [4.1.5] - 2026-08-28
+
+- Isolation: Bento CSS is component-local and cannot be captured from `window.HAToolsBentoCSS` by load order.
+- Isolation: persistence is now card-local, removing `window._haToolsPersistence` load-order coupling while retaining existing localStorage keys.
+- Isolation: removed the document-wide sibling-card injector and every shared global escape-helper reference.
+- Security: runtime values are converted to text before local escaping.
+- Tests: added deterministic card-isolation regression coverage.
+- UX: restored the donate footer within this card's own shadow root.
+- Offline/runtime: replaced the legacy `window.Chart` loader from the retired HA Tools panel with an accessible, dependency-free HTML/CSS frequency chart.
+
 ## [4.1.3] - 2026-05-12
 
 ### Fixed

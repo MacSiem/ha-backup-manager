@@ -53,6 +53,7 @@ After restart, **Backup Manager** appears in the HA sidebar.
 ## Features
 
 - Create, restore, monitor and schedule Home Assistant backups.
+- Dependency-free backup-frequency visualization (no shared panel or chart runtime required)
 - Bundled Bento Design System (light + dark mode, mobile-friendly)
 - Self-contained — no shared HA Tools dependency
 - Tool settings and dismissed-banner state are cached in browser `localStorage`
